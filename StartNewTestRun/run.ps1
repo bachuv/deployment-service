@@ -10,8 +10,9 @@ SubscriptionID = <subscription id>
 IdentityType = SystemAssigned
 '@
 
+
 #Invoke-ActivityFunction -FunctionName 'CreateNewResources' -Input $appInfo
 #Invoke-ActivityFunction -FunctionName 'CreateNewFunctionApp' -Input $appInfo
-Invoke-ActivityFunction -FunctionName 'DeployToFunctionApp' -Input $appInfo
+$output = Invoke-ActivityFunction -FunctionName 'DeployToFunctionApp' -Input $appInfo
 #Invoke-ActivityFunction -FunctionName 'DeleteFunctionApp' -Input $appInfo
 #Invoke-ActivityFunction -FunctionName 'DeleteResources' -Input $appInfo
