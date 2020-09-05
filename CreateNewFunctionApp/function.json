@@ -1,8 +1,24 @@
 {
   "bindings": [
     {
-      "name": "appInfo",
-      "type": "activityTrigger",
+      "authLevel": "anonymous",
+      "name": "Request",
+      "type": "httpTrigger",
+      "direction": "in",
+      "route": "CreateNewFunctionApp",
+      "methods": [
+        "post",
+        "get"
+      ]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "Response"
+    },
+    {
+      "name": "starter",
+      "type": "orchestrationClient",
       "direction": "in"
     }
   ]

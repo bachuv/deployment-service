@@ -5,7 +5,7 @@
       "name": "Request",
       "type": "httpTrigger",
       "direction": "in",
-      "route": "DeleteFunctionApp",
+      "route": "CreateNewResourceGroup",
       "methods": [
         "post",
         "get"

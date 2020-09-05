@@ -1,8 +1,18 @@
 using namespace System.Net
 
-param($appInfo)
+param($Request, $TriggerMetadata)
 
-#$appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
+$appInfo = @'
+ResourceGroup = vabachudurablerg5
+FunctionName = VabachuDurablePowershellApp5
+Location = centralUS
+StorageAccount = vabachudurablestorage5
+Runtime = PowerShell
+SubscriptionID = <sub id>
+IdentityType = SystemAssigned
+'@
+
+$appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
 
 # ************Download from GitHub and create a zip file*********
 $targetDir = "$env:TEMP\dfperf-dedicated"
@@ -52,3 +62,7 @@ Write-Host "$targetZipFilePath created successfully!"
 #$payload = 100
 #$json = $payload | ConvertTo-Json
 #Invoke-RestMethod "https://dfperf-dedicated2.azurewebsites.net/tests/StartManyInstances?code=<code>" -Method POST -Body $json -ContentType "application/json"
+
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+    StatusCode = [HttpStatusCode]::OK
+})

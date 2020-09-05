@@ -1,4 +1,14 @@
-param($appInfo)
+param($Request, $TriggerMetadata)
+
+$appInfo = @'
+ResourceGroup = vabachudurablerg5
+FunctionName = VabachuDurablePowershellApp5
+Location = centralUS
+StorageAccount = vabachudurablestorage5
+Runtime = PowerShell
+SubscriptionID = <sub id>
+IdentityType = SystemAssigned
+'@
 
 $appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
 
@@ -11,3 +21,7 @@ Connect-AzAccount -Credential $psCred -TenantId $azureTenantId  -ServicePrincipa
 
 "**********Removing Azure Function App***********"
 Remove-AzFunctionApp -Name $appInfoHashTable.FunctionName -ResourceGroupName $appInfoHashTable.ResourceGroup -SubscriptionId $appInfoHashTable.SubscriptionID -Force
+
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+    StatusCode = [HttpStatusCode]::OK
+})

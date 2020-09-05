@@ -1,4 +1,16 @@
-param($appInfo)
+using namespace System.Net
+
+param($Request, $TriggerMetadata)
+
+$appInfo = @'
+ResourceGroup = vabachudurablerg5
+FunctionName = VabachuDurablePowershellApp5
+Location = centralUS
+StorageAccount = vabachudurablestorage5
+Runtime = PowerShell
+SubscriptionID = <sub id>
+IdentityType = SystemAssigned
+'@
 
 $appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
 
@@ -9,5 +21,8 @@ $azurePassword = ConvertTo-SecureString "<password>" -AsPlainText -Force
 $psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
 Connect-AzAccount -Credential $psCred -TenantId $azureTenantId  -ServicePrincipal
 
-"**********Creating New Azure Function App***********"
 New-AzFunctionApp -Name $appInfoHashTable.FunctionName -ResourceGroupName $appInfoHashTable.ResourceGroup -Location $appInfoHashTable.Location -StorageAccount $appInfoHashTable.StorageAccount -Runtime $appInfoHashTable.Runtime -SubscriptionId $appInfoHashTable.SubscriptionID -IdentityType $appInfoHashTable.IdentityType 
+
+Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+    StatusCode = [HttpStatusCode]::Created
+})
