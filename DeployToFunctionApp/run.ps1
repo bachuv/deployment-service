@@ -2,40 +2,47 @@ using namespace System.Net
 
 param($Request, $TriggerMetadata)
 
-$appInfo = @'
-ResourceGroup = vabachudurablerg5
-FunctionName = VabachuDurablePowershellApp5
-Location = centralUS
-StorageAccount = vabachudurablestorage5
-Runtime = PowerShell
-SubscriptionID = <sub id>
-IdentityType = SystemAssigned
-'@
+$ErrorActionPreference = "Stop"
 
-$appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
-
-# ************Download from GitHub and create a zip file*********
-$targetDir = "$env:TEMP\dfperf-dedicated"
+# TODO: Turn these into parameters
+$GitHubOrg = "Azure"
+$ProjectName = "azure-functions-durable-extension"
+$ProjectFileDir = "test\DFPerfScenarios"
+$Framework = "netcoreapp3.1"
 
 # Delete the target directory if it already exists
-if (Test-Path -Path $targetDir) {
-    Write-Host "Deleting existing directory $targetDir..."
-    Remove-Item $targetDir -Recurse -Force
+$srcDir = "$env:TEMP\$ProjectName"
+if (Test-Path -Path $srcDir) {
+    # Also, make sure we're not currently inside that directory from a previous run
+    Set-Location $env:TEMP
+    Write-Host "Deleting existing directory $srcDir..."
+    Remove-Item $srcDir -Recurse -Force
 }
 
+# ************Download from GitHub and create a zip file*********
+
 # Clone the project into the %TEMP% directory
-# Invoke git and capture both its stdout and stderr streams.
-Write-Host "Cloning https://github.com/cgillum/dfperf-scenarios into $targetDir..."
-$result = git clone https://github.com/cgillum/dfperf-scenarios $targetDir 2>&1
+$branchName = $Request.Body.branchName # e.g. "cgillum/perf-testing"
+$repoUrl = "https://github.com/$GitHubOrg/$ProjectName"
+Write-Host "Cloning branch '$branchName' of $repoUrl into $srcDir..."
+
+# NOTE: git.exe spews out errors to stderr, which confuses PowerShell. We supress all errors from interfering with this script.
+$ErrorActionPreference = "Continue"
+$result = git clone $repoUrl -b $branchName $srcDir 2>&1
 if ($LASTEXITCODE) {
     Throw "git failed (exit code: $LASTEXITCODE):`n$($result -join "`n")"
 }
 $result | ForEach-Object ToString
+$ErrorActionPreference = "Stop"
 
 # Build the project using the "publish" command so we can get the output for publishing
-Set-Location $env:TEMP\dfperf-dedicated
-Write-Host "Building project..."
-dotnet publish -p:DeployTarget=Package
+$buildDir = "$srcDir\$ProjectFileDir"
+Set-Location $buildDir
+Write-Host "Building $buildDir..."
+dotnet publish -p:DeployTarget=Package -f:$Framework
+
+# Move out of the current directory or the handle will be held on it
+Set-Location $env:TEMP
 
 # Create the zip file for publishing
 $targetZipFilePath = "$env:TEMP\app.zip"
@@ -43,26 +50,37 @@ if (Test-Path -Path $targetZipFilePath) {
     Write-Host "Deleting existing $targetZipFilePath..."
     Remove-Item $targetZipFilePath -ErrorAction Ignore -Force
 }
-$zipSrc = "$targetDir\bin\Debug\netcoreapp3.1\publish\"
+
+$zipSrc = "$buildDir\bin\Debug\$Framework\publish\"
 Write-Host "Zipping $zipSrc into $targetZipFilePath..."
 [System.IO.Compression.ZipFile]::CreateFromDirectory($zipSrc, $targetZipFilePath)
 Write-Host "$targetZipFilePath created successfully!"
 
 #"**********DEPLOY - Connecting to Azure Account***********"
-#$azureAplicationId ="a927d29b-a40a-4242-976e-e44af4c61ccc"
-#$azureTenantId= "72f988bf-86f1-41af-91ab-2d7cd011db47"
-#$azurePassword = ConvertTo-SecureString "<password>" -AsPlainText -Force
-#$psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
-#$DefaultProfile = Connect-AzAccount -Credential $psCred -TenantId $azureTenantId  -ServicePrincipal
+$azureAplicationId = "a927d29b-a40a-4242-976e-e44af4c61ccc"
+$azureTenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47"
+$azurePassword = ConvertTo-SecureString $env:DFTEST_AAD_CLIENT_SECRET -AsPlainText -Force
+$psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
+$defaultProfile = Connect-AzAccount -Credential $psCred -TenantId $azureTenantId -ServicePrincipal
 
 #"**********Deploying a zip file to Function***********"
-#Publish-AzWebApp -ResourceGroupName $appInfoHashTable.ResourceGroup -Name $appInfoHashTable.FunctionName -DefaultProfile $DefaultProfile -ArchivePath targetZipFilePath -Force
+$appName = $Request.Body.appName
+$resourceGroup = $Request.Body.resourceGroup ?? "perf-testing"
+Write-Host "Publishing $targetZipFilePath to $appName in resource group $resourceGroup..."
+Write-Host "Publish-AzWebApp -ResourceGroupName $resourceGroup -Name $appName -DefaultProfile $defaultProfile -ArchivePath $targetZipFilePath -Force"
+Publish-AzWebApp -ResourceGroupName $resourceGroup -Name $appName -DefaultProfile $defaultProfile -ArchivePath $targetZipFilePath -Force
 
 # Triggering the many instances function
-#$payload = 100
-#$json = $payload | ConvertTo-Json
-#Invoke-RestMethod "https://dfperf-dedicated2.azurewebsites.net/tests/StartManyInstances?code=<code>" -Method POST -Body $json -ContentType "application/json"
+# TODO: Consider having the calling orchestration service do this instead
+$testName = $Request.Body.testName
+$testParameters = $Request.Body.testParameters
+$httpApiUrl = "https://${appName}.azurewebsites.net/tests/${testName}?${testParameters}"
+Write-Host "Starting test by sending a POST to $httpApiUrl..."
+$httpResponse = Invoke-WebRequest -Method POST "${httpApiUrl}&code=${env:DFTEST_MASTER_KEY}"
 
+# Send back the response content, which is expected to be the management URLs
+# of the root orchestrator function
 Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
     StatusCode = [HttpStatusCode]::OK
+    Body = $httpResponse.Content
 })

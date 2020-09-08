@@ -1,27 +1,30 @@
 param($Request, $TriggerMetadata)
 
-$appInfo = @'
-ResourceGroup = vabachudurablerg5
-FunctionName = VabachuDurablePowershellApp5
-Location = centralUS
-StorageAccount = vabachudurablestorage5
-Runtime = PowerShell
-SubscriptionID = <sub id>
-IdentityType = SystemAssigned
-'@
-
-$appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
+$ErrorActionPreference = "Stop"
 
 "**********REMOVE - Connecting to Azure Account***********"
-$azureAplicationId ="a927d29b-a40a-4242-976e-e44af4c61ccc"
-$azureTenantId= "72f988bf-86f1-41af-91ab-2d7cd011db47"
-$azurePassword = ConvertTo-SecureString "<password>" -AsPlainText -Force
+$azureAplicationId = "a927d29b-a40a-4242-976e-e44af4c61ccc"
+$azureTenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47"
+$azurePassword = ConvertTo-SecureString  $env:DFTEST_AAD_CLIENT_SECRET -AsPlainText -Force
 $psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
 Connect-AzAccount -Credential $psCred -TenantId $azureTenantId  -ServicePrincipal
 
 "**********Removing Azure Function App***********"
-Remove-AzFunctionApp -Name $appInfoHashTable.FunctionName -ResourceGroupName $appInfoHashTable.ResourceGroup -SubscriptionId $appInfoHashTable.SubscriptionID -Force
+$appName = $Request.Body.appName
+$resourceGroup = $Request.Body.resourceGroup ?? "perf-testing"
+$subscriptionId = $Request.Body.subscriptionId ?? "92d757cd-ef0d-4710-967d-2efa3c952358"
+
+# Validate parameters
+if (!$appName) {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [System.Net.HttpStatusCode]::BadRequest
+        Body = "The request JSON must contain an 'appName' field."
+    })
+    return
+}
+
+Remove-AzFunctionApp -Name $appName -ResourceGroupName $resourceGroup -Force
 
 Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
-    StatusCode = [HttpStatusCode]::OK
+    StatusCode = [System.Net.HttpStatusCode]::OK
 })
