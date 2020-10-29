@@ -5,19 +5,20 @@ param($Request, $TriggerMetadata)
 $ErrorActionPreference = "Stop"
 
 # Parameters
-$appName = $Request.Body.appName
+$appPlanName = $Request.Body.appPlanName
 $resourceGroup = $Request.Body.resourceGroup
-$storageAccount = $Request.Body.storageAccount
-$runtime = $Request.Body.runtime
-$subscriptionId = $Request.Body.subscriptionId
 $location = $Request.Body.location ?? "centralus"
-$functionsVersion = $Request.Body.functionsVersion
-$osType = $Request.Body.OSType
+$subscriptionId = $Request.Body.subscriptionId
 
-if (!$appName) {
+$sku = $Request.Body.sku
+$workerType = $Request.Body.OSType
+$minimumWorkerCount = $Request.Body.minInstanceCount
+$maximumWorkerCount = $Request.Body.maxInstanceCount
+
+if (!$appPlanName) {
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
         StatusCode = [HttpStatusCode]::BadRequest
-        Body = "The request JSON must contain an 'appName' field."
+        Body = "The request JSON must contain an 'appPlanName' field."
     })
     return
 }
@@ -29,10 +30,11 @@ $azurePassword = ConvertTo-SecureString $env:DFTEST_AAD_CLIENT_SECRET -AsPlainTe
 $psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
 Set-AzContext -SubscriptionId $subscriptionId
 
-Write-Host "New-AzFunctionApp -Name $appName -ResourceGroupName $resourceGroup -Location $location -StorageAccount $storageAccount -Runtime $runtime -SubscriptionId $subscriptionId -FunctionsVersion $functionsVersion -OSType $osType"
+Write-Host "New-AzFunctionAppPlan -Location $location -Name $appPlanName -ResourceGroupName $resourceGroup -Sku $sku -WorkerType $workerType -MinimumWorkerCount $minimumWorkerCount -MaximumWorkerCount $maximumWorkerCount"
 
 try {
-    New-AzFunctionApp -Name $appName -ResourceGroupName $resourceGroup -Location $location -StorageAccount $storageAccount -Runtime $runtime -SubscriptionId $subscriptionId -FunctionsVersion $functionsVersion -OSType $osType
+    New-AzFunctionAppPlan -Location $location -Name $appPlanName -ResourceGroupName $resourceGroup -Sku $sku -WorkerType $workerType -MinimumWorkerCount $minimumWorkerCount -MaximumWorkerCount $maximumWorkerCount
+
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
         StatusCode = [HttpStatusCode]::Created
     })

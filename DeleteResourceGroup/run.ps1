@@ -12,9 +12,16 @@ IdentityType = SystemAssigned
 
 $appInfoHashTable = ConvertFrom-StringData -StringData $appInfo
 
-#Delete resource group
-Remove-AzResourceGroup -Name $appInfoHashTable.ResourceGroup -Force
+try {
+    #Delete resource group
+    Remove-AzResourceGroup -Name $appInfoHashTable.ResourceGroup -Force
 
-Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
-    StatusCode = [HttpStatusCode]::OK
-})
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::OK
+    })
+}
+catch {
+    Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
+        StatusCode = [HttpStatusCode]::OK
+    })
+}

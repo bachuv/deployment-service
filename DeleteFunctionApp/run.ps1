@@ -11,8 +11,8 @@ Connect-AzAccount -Credential $psCred -TenantId $azureTenantId  -ServicePrincipa
 
 "**********Removing Azure Function App***********"
 $appName = $Request.Body.appName
-$resourceGroup = $Request.Body.resourceGroup ?? "perf-testing"
-$subscriptionId = $Request.Body.subscriptionId ?? "92d757cd-ef0d-4710-967d-2efa3c952358"
+$resourceGroup = $Request.Body.resourceGroup
+$subscriptionId = $Request.Body.subscriptionId
 
 # Validate parameters
 if (!$appName) {

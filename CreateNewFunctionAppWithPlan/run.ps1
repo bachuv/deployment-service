@@ -10,7 +10,8 @@ $resourceGroup = $Request.Body.resourceGroup
 $storageAccount = $Request.Body.storageAccount
 $runtime = $Request.Body.runtime
 $subscriptionId = $Request.Body.subscriptionId
-$location = $Request.Body.location ?? "centralus"
+$appPlanName = $Request.Body.appPlanName
+
 $functionsVersion = $Request.Body.functionsVersion
 $osType = $Request.Body.OSType
 
@@ -29,10 +30,11 @@ $azurePassword = ConvertTo-SecureString $env:DFTEST_AAD_CLIENT_SECRET -AsPlainTe
 $psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
 Set-AzContext -SubscriptionId $subscriptionId
 
-Write-Host "New-AzFunctionApp -Name $appName -ResourceGroupName $resourceGroup -Location $location -StorageAccount $storageAccount -Runtime $runtime -SubscriptionId $subscriptionId -FunctionsVersion $functionsVersion -OSType $osType"
+Write-Host "New-AzFunctionApp -Name $appName -PlanName $appPlanName -ResourceGroupName $resourceGroup -StorageAccount $storageAccount -Runtime $runtime -SubscriptionId $subscriptionId -FunctionsVersion $functionsVersion"
 
 try {
-    New-AzFunctionApp -Name $appName -ResourceGroupName $resourceGroup -Location $location -StorageAccount $storageAccount -Runtime $runtime -SubscriptionId $subscriptionId -FunctionsVersion $functionsVersion -OSType $osType
+    New-AzFunctionApp -Name $appName -PlanName $appPlanName -ResourceGroupName $resourceGroup -StorageAccount $storageAccount -Runtime $runtime -SubscriptionId $subscriptionId -FunctionsVersion $functionsVersion
+
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
         StatusCode = [HttpStatusCode]::Created
     })

@@ -5,21 +5,18 @@ param($Request, $TriggerMetadata)
 $ErrorActionPreference = "Stop"
 
 $resourceGroupName = $Request.Body.resourceGroup
-$storageAccountName = $Request.Body.storageAccount
-$Location = "centralUS"
+$appPlanName = $Request.Body.appPlanName
 $subscriptionId = $Request.Body.subscriptionId
 Set-AzContext -SubscriptionId $subscriptionId
 
 try {
-    #Create new storage account
-    New-AzStorageAccount -ResourceGroupName $resourceGroupName -AccountName $storageAccountName -Location $Location -SkuName Standard_GRS
-
+    Get-AzFunctionAppPlan -Name $appPlanName -ResourceGroupName $resourceGroupName
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
-        StatusCode = [HttpStatusCode]::Created
+        StatusCode = [HttpStatusCode]::OK
     })
 }
 catch {
     Push-OutputBinding -Name Response -Value ([HttpResponseContext]@{
-        StatusCode = [HttpStatusCode]::BadRequest
+        StatusCode = [HttpStatusCode]::NotFound
     })
 }

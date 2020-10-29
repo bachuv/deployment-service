@@ -4,8 +4,8 @@ param($Request, $TriggerMetadata)
 
 $ErrorActionPreference = "Stop"
 
-# TODO: Turn these into parameters
-$GitHubOrg = "Azure"
+# TODO: change githuborg to be Azure
+$GitHubOrg = "bachuv"
 $ProjectName = "azure-functions-durable-extension"
 $ProjectFileDir = "test\DFPerfScenarios"
 $Framework = "netcoreapp3.1"
@@ -61,7 +61,9 @@ $azureAplicationId = "a927d29b-a40a-4242-976e-e44af4c61ccc"
 $azureTenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47"
 $azurePassword = ConvertTo-SecureString $env:DFTEST_AAD_CLIENT_SECRET -AsPlainText -Force
 $psCred = New-Object System.Management.Automation.PSCredential($azureAplicationId , $azurePassword)
-$defaultProfile = Connect-AzAccount -Credential $psCred -TenantId $azureTenantId -ServicePrincipal
+$subscriptionId = $Request.Body.subscriptionId
+Write-Host "sub id - $subscriptionId"
+Set-AzContext -SubscriptionId $subscriptionId
 
 #"**********Deploying a zip file to Function***********"
 $appName = $Request.Body.appName
@@ -74,9 +76,11 @@ Publish-AzWebApp -ResourceGroupName $resourceGroup -Name $appName -DefaultProfil
 # TODO: Consider having the calling orchestration service do this instead
 $testName = $Request.Body.testName
 $testParameters = $Request.Body.testParameters
-$httpApiUrl = "https://${appName}.azurewebsites.net/tests/${testName}?${testParameters}"
+#$httpApiUrl = "https://${appName}.azurewebsites.net/tests/${testName}?${testParameters}"
+$httpApiUrl = "https://${appName}.azurewebsites.net/tests/${testName}"
 Write-Host "Starting test by sending a POST to $httpApiUrl..."
-$httpResponse = Invoke-WebRequest -Method POST "${httpApiUrl}&code=${env:DFTEST_MASTER_KEY}"
+#$httpResponse = Invoke-WebRequest -Method POST "${httpApiUrl}&code=${env:DFTEST_MASTER_KEY}"
+$httpResponse = Invoke-WebRequest -Method POST "${httpApiUrl}"
 
 # Send back the response content, which is expected to be the management URLs
 # of the root orchestrator function
